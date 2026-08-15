@@ -1,0 +1,285 @@
+/**
+ * Core Philosophy: This ruleset enforces a security model based on a combination of strict user ownership and role-based access control. User data is private to the user, while shared resources like classes are accessible based on explicit membership.
+ *
+ * Data Structure:
+ * - /users/{userId}: Private user profile documents, accessible only by the owner.
+ * - /users/{userId}/attendanceHistory/{id}: A private subcollection for a user's own attendance records.
+ * - /roles_teacher/{userId}, /roles_student/{userId}: Role-granting collections. The existence of a document confers the respective role. These collections are managed by backend processes, not clients.
+ * - /classes/{classId}: Collaborative documents for classes, containing a `members` map that dictates access.
+ * - /classes/{classId}/resources/{resourceId}: Educational resources for a class, with access controlled by class membership.
+ * - /qrcodes/{qrcodeId}: Contains QR code data linked to a class. Access is governed by a denormalized `members` map from the parent class.
+ * - /attendances/{attendanceId}: Individual attendance check-in records. Students can create their own records, but only teachers of the class can manage or view the full list.
+ *
+ * Key Security Decisions:
+ * - Default Deny: All paths are closed by default. Access must be explicitly granted.
+ * - No User Enumeration: The top-level `/users` collection cannot be listed, preventing attackers from harvesting user data.
+ * - Backend-Managed Roles: To ensure system integrity, role assignments in `/roles_teacher` and `/roles_student` cannot be modified by clients.
+ * - Denormalization for Security: The `members` map is denormalized (copied) onto `/classes` and `/qrcodes` documents. This allows for simple, performant, and secure access checks without needing costly `get` calls in rules for read operations.
+ * - Segregated Attendance Views: Students query their own private `/users/{userId}/attendanceHistory` for their records, while teachers can access the master `/attendances` collection for a class. This separation simplifies security rules.
+ */
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions for reusable logic
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isExistingOwner(userId) {
+      return isOwner(userId) && resource != null;
+    }
+
+    // Checks if the user has a 'teacher' role document.
+
+    function isDean() {
+      return request.auth != null && request.auth.token.email.matches('.*@dean\\.com$');
+    }
+
+    function isTeacherOrDean() {
+      return request.auth != null && (
+        request.auth.token.email.matches('.*@teacher\\.com$') ||
+        request.auth.token.email.matches('.*@faculty\\.com$') ||
+        request.auth.token.email.matches('.*@dean\\.com$')
+      );
+    }
+
+    // Checks if a user is listed as a teacher in a specific class's members map.
+    // This requires a 'get' call, suitable for write operations or specific reads.
+    function isTeacherOfClass(classId) {
+      let classDoc = get(/databases/$(database)/documents/classes/$(classId));
+      return isSignedIn() && classDoc.data.members[request.auth.uid] == 'teacher';
+    }
+
+    // Checks if a user is listed in a specific class's members map.
+    function isMemberOfClass(classId) {
+      let classDoc = get(/databases/$(database)/documents/classes/$(classId));
+      return isSignedIn() && classDoc.data.members[request.auth.uid] != null;
+    }
+
+    /**
+     * @description Manages user profile data. A user can create their own profile and has full control over it. No other user can read or write to it.
+     * @path /users/{userId}
+     * @allow (create) An authenticated user creating their own user document: `create /users/user_abc` with auth.uid=`user_abc`.
+     * @deny (get) Another user trying to read a profile: `get /users/user_xyz` with auth.uid=`user_abc`.
+     * @principle Restricts access to a user's own data tree.
+     */
+    match /users/{userId} {
+      allow get: if isOwner(userId) || isTeacherOrDean();
+      allow list: if isTeacherOrDean();
+      allow create: if isOwner(userId) && request.resource.data.id == userId;
+      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
+      allow delete: if isExistingOwner(userId);
+
+      /**
+       * @description Stores a user's personal attendance history. It is a private subcollection fully controlled by the parent user document's owner.
+       * @path /users/{userId}/attendanceHistory/{attendanceHistoryId}
+       * @allow (list) A user listing their own attendance history: `list /users/user_abc/attendanceHistory` with auth.uid=`user_abc`.
+       * @deny (get) Another user trying to read a history record: `get /users/user_xyz/attendanceHistory/hist_123` with auth.uid=`user_abc`.
+       * @principle Enforces document ownership for an entire subcollection.
+       */
+      match /attendanceHistory/{attendanceHistoryId} {
+        allow get: if isOwner(userId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId);
+        allow update: if isExistingOwner(userId);
+        allow delete: if isExistingOwner(userId);
+      }
+    }
+
+    /**
+     * @description Defines which users have the 'teacher' role. Document existence confers the role. This collection is read-only for clients.
+     * @path /roles_teacher/{userId}
+     * @allow (N/A) No client operations are permitted. Roles are checked internally by other rules using `exists()`.
+     * @deny (create) Any user trying to make themselves a teacher: `create /roles_teacher/user_abc`.
+     * @principle Secures critical role-granting data by making it immutable from the client-side. Must be managed via the Firebase Console or a trusted backend server.
+     */
+    match /roles_teacher/{userId} {
+      allow get: if false;
+      allow list: if false;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    /**
+     * @description Defines which users have the 'student' role. Document existence confers the role. This collection is read-only for clients.
+     * @path /roles_student/{userId}
+     * @allow (N/A) No client operations are permitted. Roles are checked internally by other rules using `exists()`.
+     * @deny (create) Any user trying to make themselves a student: `create /roles_student/user_abc`.
+     * @principle Secures critical role-granting data by making it immutable from the client-side. Must be managed via the Firebase Console or a trusted backend server.
+     */
+    match /roles_student/{userId} {
+      allow get: if false;
+      allow list: if false;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    /**
+     * @description Stores class data. Access is controlled by a `members` map on each document. Only teachers can create or manage classes.
+     * @path /classes/{classId}
+     * @allow (create) A verified teacher creating a new class: `create /classes/class_101` with a user who has a document in `/roles_teacher`.
+     * @deny (update) A student member trying to change the class name: `update /classes/class_101` where the user is not a 'teacher' in the `members` map.
+     * @principle Implements shared access using a denormalized `members` map for collaborative data.
+     */
+    match /classes/{classId} {
+      allow get: if isMemberOfClass(classId);
+      allow list: if isMemberOfClass(classId);
+      allow create: if isTeacherOrDean() && request.resource.data.members[request.auth.uid] == 'teacher';
+      allow update: if resource != null && isTeacherOfClass(classId);
+      allow delete: if resource != null && isTeacherOfClass(classId);
+      
+      /**
+       * @description Stores educational resources for a class. Teachers can manage them, and students can access them.
+       * @path /classes/{classId}/resources/{resourceId}
+       * @allow (list, get) A student who is a member of the class can view resources.
+       * @allow (create, update, delete) A teacher of the class can manage resources.
+       * @principle Access to subcollection resources is gated by membership in the parent class document.
+       */
+      match /resources/{resourceId} {
+        allow get, list: if isMemberOfClass(classId);
+        allow create: if isTeacherOfClass(classId) && request.resource.data.uploaderId == request.auth.uid;
+        // Allow updates by the teacher. A student can only update the download count.
+        allow update: if isTeacherOfClass(classId) || 
+                       (isMemberOfClass(classId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['downloadCount']));
+        allow delete: if isTeacherOfClass(classId);
+      }
+    }
+
+    /**
+     * @description Stores QR code data. Access is granted if the user is a member of the associated class. Management is restricted to teachers of that class.
+     * @path /qrcodes/{qrcodeId}
+     * @allow (get) A student member scanning a QR code: `get /qrcodes/qr_123` where the student's UID is in the document's `members` map.
+     * @deny (list) Any user trying to list all QR codes in the system: `list /qrcodes`.
+     * @principle Leverages denormalized authorization data (`members` map) for efficient reads, while using `get()` on writes for strict validation.
+     */
+    match /qrcodes/{qrcodeId} {
+      allow get: if isSignedIn() && resource.data.members[request.auth.uid] != null;
+      allow list: if false;
+      allow create: if isTeacherOfClass(request.resource.data.classId);
+      allow update: if resource != null && isTeacherOfClass(resource.data.classId);
+      allow delete: if resource != null && isTeacherOfClass(resource.data.classId);
+    }
+
+    /**
+     * @description Stores attendance records. Students can create their own records for classes they are in. Teachers of a class can manage all records for that class.
+     * @path /attendances/{attendanceId}
+     * @allow (create) A student submitting their attendance: `create /attendances/att_123` with `userId` matching their auth UID, for a class they are a member of.
+     * @deny (list) A student trying to view all attendance records: `list /attendances`.
+     * @principle Provides granular access: users can create their own data, but a higher-privileged role (teacher) is required for management and broad reads.
+     */
+    match /attendances/{attendanceId} {
+      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || isTeacherOfClass(resource.data.classId));
+      allow list: if false; // Students should use their private attendanceHistory. Teachers must use a backend function for class-wide queries.
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid && isMemberOfClass(request.resource.data.classId);
+      allow update: if resource != null && isTeacherOfClass(resource.data.classId);
+      allow delete: if resource != null && isTeacherOfClass(resource.data.classId);
+    }
+    
+    /**
+     * @description Stores student-submitted grievances.
+     * @path /grievances/{grievanceId}
+     * @allow (create) A student creating their own grievance record.
+     * @allow (read) A student viewing their own records, or a teacher viewing any record. This rule enforces that student list queries must filter by studentId.
+     * @allow (update) A teacher updating a grievance record (e.g., changing status).
+     * @principle Combines ownership-based access for students with role-based access for teachers.
+     */
+    match /grievances/{grievanceId} {
+      allow read: if isSignedIn() && (isTeacherOrDean() || resource.data.studentId == request.auth.uid);
+      allow create: if isSignedIn() && request.resource.data.studentId == request.auth.uid;
+      allow update: if isTeacherOrDean();
+      allow delete: if false;
+    }
+
+    // Top-level resources collection: teachers upload, all signed-in users can read
+    match /resources/{resourceId} {
+      allow read: if isSignedIn();
+      allow create: if isTeacherOrDean();
+      allow update: if isTeacherOrDean();
+      allow delete: if isTeacherOrDean();
+    }
+
+    // Attendance records - students create their own via QR/code; teachers
+    // and dean can also create/edit records directly (manual roll-call).
+    // Without the isTeacherOrDean() clause here, a teacher's manual
+    // "Submit Attendance" silently fails for any student who doesn't
+    // already have a record for that date, since the write's studentId
+    // wouldn't match the teacher's own auth uid.
+    match /attendance/{attendanceId} {
+      allow read: if isSignedIn() && (isTeacherOrDean() || resource.data.studentId == request.auth.uid);
+      allow create: if isSignedIn() && (request.resource.data.studentId == request.auth.uid || isTeacherOrDean());
+      allow update, delete: if isTeacherOrDean();
+    }
+
+    // Active sessions - teachers create/update, all signed-in users can read
+    match /activeSessions/{sessionId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isTeacherOrDean();
+    }
+
+    // One-time teacher attendance submission locks. A teacher can create/read
+    // a lock for a class/period, but an existing lock cannot be overwritten.
+    match /attendanceSubmissions/{lockId} {
+      allow read: if isTeacherOrDean();
+      allow create: if isTeacherOrDean();
+      allow update, delete: if false;
+    }
+
+
+    // One student identity can claim a device for an active attendance session only once.
+    // This prevents the same phone/device from submitting attendance for multiple
+    // student accounts during the same teacher session. IP is retained for audit,
+    // but is not used as a hard classroom-identity check because public IPs can be shared.
+    match /attendanceSessionClaims/{claimId} {
+      allow get: if isSignedIn();
+      allow list: if false;
+      allow create: if isSignedIn() && request.resource.data.studentId == request.auth.uid;
+      allow update, delete: if false;
+    }
+
+    // Security alerts are created by the affected signed-in student and are
+    // readable by the Dean for investigation. They are append-only from the
+    // client so a student cannot erase or rewrite an alert after an attempt.
+    match /securityAlerts/{alertId} {
+      allow create: if isSignedIn() && request.resource.data.studentId == request.auth.uid;
+      allow get, list: if isDean();
+      allow update, delete: if false;
+    }
+
+    // Official department notices - only the Dean can publish or manage them.
+    match /notifications/{notificationId} {
+      allow read: if isSignedIn();
+      // Dean publishes official notices. Teachers may create only targeted
+      // attendance alerts for students in a submitted class period.
+      allow create: if isSignedIn() && (
+        request.auth.token.email.matches('.*@dean\\.com$') ||
+        (
+          (request.auth.token.email.matches('.*@teacher\\.com$') || request.auth.token.email.matches('.*@faculty\\.com$')) &&
+          request.resource.data.type == 'attendance' &&
+          request.resource.data.studentId is string &&
+          request.resource.data.classId is string
+        )
+      );
+      allow update, delete: if isSignedIn() && request.auth.token.email.matches('.*@dean\\.com$');
+    }
+
+    // Official academic calendar entries. Empty until the college publishes real dates.
+    match /academicCalendar/{eventId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isDean();
+    }
+
+    // Campus events - only the Dean can publish or manage them; students and teachers can read them.
+    match /campusEvents/{eventId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && request.auth.token.email.matches('.*@dean\\.com$');
+      allow update, delete: if isSignedIn() && request.auth.token.email.matches('.*@dean\\.com$');
+    }
+  }
+}

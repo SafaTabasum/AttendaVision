@@ -1,0 +1,9 @@
+{
+  "name": "AttendaVision",
+  "short_name": "AttendaVision",
+  "description": "AI-powered attendance tracking system",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#f0fbfe",
+  "theme_color": "#4cb4ee"
+}

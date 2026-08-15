@@ -1,0 +1,344 @@
+{
+  "entities": {
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user of the AttendaVision system, either a student or a teacher.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the user.",
+          "format": "uuid"
+        },
+        "email": {
+          "type": "string",
+          "description": "The user's email address.",
+          "format": "email"
+        },
+        "firstName": {
+          "type": "string",
+          "description": "The user's first name."
+        },
+        "lastName": {
+          "type": "string",
+          "description": "The user's last name."
+        },
+        "role": {
+          "type": "string",
+          "description": "The user's role in the system (e.g., student, teacher)."
+        }
+      },
+      "required": [
+        "id",
+        "email",
+        "firstName",
+        "lastName",
+        "role"
+      ]
+    },
+    "Resource": {
+      "title": "Resource",
+      "description": "Represents an educational resource uploaded by a teacher.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the resource."
+        },
+        "classId": {
+          "type": "string",
+          "description": "The ID of the class this resource belongs to."
+        },
+        "title": {
+          "type": "string",
+          "description": "The title of the resource."
+        },
+        "description": {
+          "type": "string",
+          "description": "A brief description of the resource."
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "note",
+            "video",
+            "assignment"
+          ],
+          "description": "The type of the resource."
+        },
+        "fileUrl": {
+          "type": "string",
+          "format": "uri",
+          "description": "The URL to the uploaded resource file."
+        },
+        "topic": {
+          "type": "string",
+          "description": "The topic or module this resource relates to."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The timestamp when the resource was created."
+        },
+        "uploaderId": {
+          "type": "string",
+          "description": "The user ID of the teacher who uploaded the resource."
+        },
+        "downloadCount": {
+          "type": "number",
+          "description": "How many times the resource has been downloaded."
+        }
+      },
+      "required": [
+        "id",
+        "classId",
+        "title",
+        "type",
+        "fileUrl",
+        "createdAt",
+        "uploaderId"
+      ]
+    },
+    "Grievance": {
+      "title": "Grievance",
+      "description": "Represents a grievance or issue reported by a student.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the grievance."
+        },
+        "studentId": {
+          "type": "string",
+          "description": "The ID of the student who submitted the grievance."
+        },
+        "classId": {
+          "type": "string",
+          "description": "The ID of the class this grievance relates to (optional)."
+        },
+        "category": {
+          "type": "string",
+          "enum": [
+            "attendance",
+            "technical",
+            "resources",
+            "other"
+          ],
+          "description": "The category of the grievance."
+        },
+        "priority": {
+          "type": "string",
+          "enum": [
+            "low",
+            "medium",
+            "high"
+          ],
+          "description": "The priority level of the grievance."
+        },
+        "subject": {
+          "type": "string",
+          "description": "A short subject line for the grievance."
+        },
+        "description": {
+          "type": "string",
+          "description": "A detailed description of the issue."
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "open",
+            "in_progress",
+            "resolved",
+            "closed"
+          ],
+          "description": "The current status of the grievance."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The timestamp when the grievance was submitted."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The timestamp when the grievance was last updated."
+        }
+      },
+      "required": [
+        "id",
+        "studentId",
+        "category",
+        "priority",
+        "subject",
+        "description",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores user profiles. Accessible only by the user themselves (or admin roles, if implemented).",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/roles_teacher/{userId}",
+        "definition": {
+          "entityName": "teacherRole",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Indicates a user has the 'teacher' role. Document existence confers the role.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the teacher."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/roles_student/{userId}",
+        "definition": {
+          "entityName": "studentRole",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Indicates a user has the 'student' role. Document existence confers the role.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the student."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/qrcodes/{qrcodeId}",
+        "definition": {
+          "entityName": "qrCode",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores QR code data, including classId and a denormalized 'members' map copied from class for authorization independence.",
+          "params": [
+            {
+              "name": "qrcodeId",
+              "description": "The unique identifier of the QR code."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/classes/{classId}",
+        "definition": {
+          "entityName": "class",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores class data, including members map and qrcodeId (points to a document id in `/qrcodes/{qrcodeId}` collection.",
+          "params": [
+            {
+              "name": "classId",
+              "description": "The unique identifier of the class."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/classes/{classId}/resources/{resourceId}",
+        "definition": {
+          "entityName": "Resource",
+          "schema": {
+            "$ref": "#/backend/entities/Resource"
+          },
+          "description": "Stores educational resources for a specific class. Teachers of the class can manage resources, and students in the class can view and download them.",
+          "params": [
+            {
+              "name": "classId",
+              "description": "The unique identifier of the class."
+            },
+            {
+              "name": "resourceId",
+              "description": "The unique identifier of the resource."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/attendances/{attendanceId}",
+        "definition": {
+          "entityName": "attendance",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores attendance records, including denormalized userId, classId and timestamp for efficient queries.",
+          "params": [
+            {
+              "name": "attendanceId",
+              "description": "The unique identifier of the attendance record."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/attendanceHistory/{attendanceHistoryId}",
+        "definition": {
+          "entityName": "attendanceHistory",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores attendance history for a user, with timestamp and classId.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            },
+            {
+              "name": "attendanceHistoryId",
+              "description": "The unique identifier of the attendance history record."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/grievances/{grievanceId}",
+        "definition": {
+          "entityName": "Grievance",
+          "schema": {
+            "$ref": "#/backend/entities/Grievance"
+          },
+          "description": "Stores student-submitted grievances. Students can create and view their own. Teachers can view and manage all grievances.",
+          "params": [
+            {
+              "name": "grievanceId",
+              "description": "The unique identifier of the grievance."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure prioritizes authorization independence and clarity for the AttendaVision app. User data is stored under `/users/{userId}` for simple ownership-based access control. Separate collections for roles (`/roles_teacher/{userId}`, `/roles_student/{userId}`) enable role-based access without custom claims, relying on document existence. QR codes, essential for student attendance, are stored in the `/qrcodes/{qrcodeId}` collection, including denormalized class membership data (`classId` and `members` map copied from class) to allow students to scan QR codes of all classes they are members of, and enforce secure `list` operations. Classes are stored under `/classes/{classId}`, each containing a `members` map for authorization, also, a `qrcodeId` field that references a document id in the `/qrcodes/{qrcodeId}` collection. A subcollection, `/classes/{classId}/resources/{resourceId}`, stores educational materials, with access controlled by class membership. Attendance records are stored in `/attendances/{attendanceId}`, with denormalized `userId`, `classId` and `timestamp` fields to facilitate efficient queries and reporting without complex joins. Finally, the `attendanceHistory` of a student is stored under `/users/{userId}/attendanceHistory/{attendanceHistoryId}`, with timestamp and classId to facilitate viewing personal attendance history."
+  }
+}

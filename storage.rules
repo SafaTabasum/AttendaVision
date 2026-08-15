@@ -1,0 +1,19 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isSignedIn() { return request.auth != null; }
+    function isTeacherOrDean() {
+      return isSignedIn() && (
+        request.auth.token.email.matches('.*@teacher\\.com$') ||
+        request.auth.token.email.matches('.*@faculty\\.com$') ||
+        request.auth.token.email.matches('.*@dean\\.com$')
+      );
+    }
+
+    match /resources/{userId}/{fileName} {
+      allow read: if isSignedIn();
+      allow create, update: if isTeacherOrDean() && request.auth.uid == userId;
+      allow delete: if isTeacherOrDean() && request.auth.uid == userId;
+    }
+  }
+}

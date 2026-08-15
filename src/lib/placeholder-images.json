@@ -1,0 +1,64 @@
+{
+  "placeholderImages": [
+    {
+      "id": "student-1",
+      "description": "A student's face for avatar.",
+      "imageUrl": "https://images.unsplash.com/photo-1646369505413-216676fef89c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxzdHVkZW50JTIwZmFjZXxlbnwwfHx8fDE3NjU3OTA2MDF8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "student face"
+    },
+    {
+      "id": "student-2",
+      "description": "A student's face for avatar.",
+      "imageUrl": "https://images.unsplash.com/photo-1631304672439-f6ef24965cc2?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHxzdHVkZW50JTIwZmFjZXxlbnwwfHx8fDE3NjU3OTA2MDF8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "student face"
+    },
+    {
+      "id": "student-3",
+      "description": "A student's face for avatar.",
+      "imageUrl": "https://images.unsplash.com/photo-1717654298160-d0a8f45df1fc?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw5fHxzdHVkZW50JTIwZmFjZXxlbnwwfHx8fDE3NjU3OTA2MDF8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "student face"
+    },
+    {
+      "id": "student-4",
+      "description": "A student's face for avatar.",
+      "imageUrl": "https://images.unsplash.com/photo-1646369506164-f8f24d4d6d81?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwyfHxzdHVkZW50JTIwZmFjZXxlbnwwfHx8fDE3NjU3OTA2MDF8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "student face"
+    },
+    {
+      "id": "student-5",
+      "description": "A student's face for avatar.",
+      "imageUrl": "https://images.unsplash.com/photo-1717654298160-d0a8f45df1fc?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw5fHxzdHVkZW50JTIwZmFjZXxlbnwwfHx8fDE3NjU3OTA2MDF8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "student face"
+    },
+    {
+      "id": "student-6",
+      "description": "A student's face for avatar.",
+      "imageUrl": "https://images.unsplash.com/photo-1564866657311-e9cc905d29cf?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxMHx8c3R1ZGVudCUyMGZhY2V8ZW58MHx8fHwxNzY1NzkwNjAxfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "student face"
+    },
+    {
+      "id": "student-7",
+      "description": "A student's face for avatar.",
+      "imageUrl": "https://images.unsplash.com/photo-1564866657311-e9cc905d29cf?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxMHx8c3R1ZGVudCUyMGZhY2V8ZW58MHx8fHwxNzY1NzkwNjAxfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "student face"
+    },
+    {
+      "id": "student-8",
+      "description": "A student's face for avatar.",
+      "imageUrl": "https://images.unsplash.com/photo-1646369506164-f8f24d4d6d81?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwyfHxzdHVkZW50JTIwZmFjZXxlbnwwfHx8fDE3NjU3OTA2MDF8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "student face"
+    },
+    {
+      "id": "student-9",
+      "description": "A student's face for avatar.",
+      "imageUrl": "https://images.unsplash.com/photo-1717654298160-d0a8f45df1fc?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw5fHxzdHVkZW50JTIwZmFjZXxlbnwwfHx8fDE3NjU3OTA2MDF8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "student face"
+    },
+    {
+      "id": "student-10",
+      "description": "A student's face for avatar.",
+      "imageUrl": "https://images.unsplash.com/photo-1646369505413-216676fef89c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxzdHVkZW50JTIwZmFjZXxlbnwwfHx8fDE3NjU3OTA2MDF8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "student face"
+    }
+  ]
+}
